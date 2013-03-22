@@ -7,15 +7,22 @@ using System.Web.Mvc;
 namespace Ibi.Fe.Router.Controllers
 {
     using System.IO;
+    using System.Runtime.Serialization;
+    using System.Web.Http;
+
+    using GeoJSON.Net.Feature;
+    using GeoJSON.Net.Geometry;
 
     using Ibi.Fe.Router.Code;
 
     using OsmSharp.Routing.Core;
     using OsmSharp.Tools.Math.Geo;
 
-    public class RouteController : Controller
+    [KnownType(typeof(Feature))]
+    [KnownType(typeof(LineString))]
+    public class RouteController : ApiController
     {
-        public ActionResult Index()
+        public Feature Get()
         {
             var router = Engine.Instance;
 
@@ -26,9 +33,21 @@ namespace Ibi.Fe.Router.Controllers
             // calculate route.
             var route = router.Calculate(VehicleEnum.Bicycle, point1, point2);
 
-            route.SaveAsGpx(new FileInfo("route.gpx"));
 
-            return null;
+            var coordinates = route.Entries
+                .Select(x => new GeographicPosition(x.Latitude, x.Longitude))
+                .ToList();
+
+            var lineString = new LineString(new List<IPosition>(coordinates));
+
+            var feature = new Feature(
+                lineString, 
+                new Dictionary<string, object>
+                    {
+                        { "Name", "Test route result." }
+                    });
+
+            return feature;
         }
     }
 }
